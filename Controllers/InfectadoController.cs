@@ -1,6 +1,8 @@
 using System;
 using Api.Data.collections;
+using System.Collections.Generic;
 using Api.Models;
+using Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 
@@ -10,52 +12,48 @@ namespace Api.Controllers
     [Route("[controller]")]
     public class InfectadoController : ControllerBase
     {
-        Data.MongoDB _mongoDB;
-        IMongoCollection<Infectado> _infectadosCollection;
+        InfectadoService _infectadoService;
 
-        public InfectadoController(Data.MongoDB mongoDB)
+        public InfectadoController(InfectadoService infectadoService)
         {
-            _mongoDB = mongoDB;
-            _infectadosCollection = _mongoDB.DB.GetCollection<Infectado>(typeof(Infectado).Name.ToLower());
+            _infectadoService = infectadoService;
         }
 
         [HttpPost]
         public ActionResult SalvarInfectado([FromBody] InfectadoDTO dto)
         {
-            var infectado = new Infectado(dto.DataNascimento, dto.Sexo, dto.Latitude, dto.Longitude);
-
-            _infectadosCollection.InsertOne(infectado);
-            
-            return StatusCode(201, "Infectado adicionado com sucesso");
+            bool result = _infectadoService.CreateObject(dto);
+            if(result) {
+                return StatusCode(201, "Infectado adicionado com sucesso");
+            }
+            return StatusCode(500, "Erro ao adicionar Infectado");
         }
 
         [HttpGet]
         public ActionResult ObterInfectados()
         {
-            var infectados = _infectadosCollection.Find(Builders<Infectado>.Filter.Empty).ToList();
-            
+            List<Infectado> infectados = _infectadoService.GetAll();
             return Ok(infectados);
         }
 
         [HttpPut]
         public ActionResult AtualizarInfectado([FromBody] InfectadoDTO dto)
         {
-            var infectado = new Infectado(dto.DataNascimento, dto.Sexo, dto.Latitude, dto.Longitude);
-
-            _infectadosCollection.UpdateOne(Builders<Infectado>.Filter
-                .Where(obj=> obj.dataNascimento == dto.DataNascimento), Builders<Infectado>.Update.Set("sexo", dto.Sexo)); 
-            
-            return Ok("Objeto Atualizado");
+            bool result = _infectadoService.Update(dto);
+            if(result) {
+                return StatusCode(201, "Infectado atualizado com sucesso");
+            }
+            return StatusCode(500, "Erro ao atualizar Infectado");
         }
-
 
         [HttpDelete("{dataNasc}")]
         public ActionResult DeletarInfectado(DateTime dataNasc)
         {
-            _infectadosCollection.DeleteOne(Builders<Infectado>.Filter
-                .Where(obj => obj.dataNascimento == dataNasc));
-               
-            return Ok("Objeto Deletado Com Sucesso");
+            bool result = _infectadoService.Delete(dataNasc);
+             if(result) {
+               return Ok("Objeto Deletado Com Sucesso");
+            }  
+             return StatusCode(500, "Erro ao deletar Infectado");
         }
     }
 }
